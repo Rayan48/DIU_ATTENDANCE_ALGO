@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Attendance System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161921;
+    --surface2: #1e2230;
+    --border: #2a2f42;
+    --accent: #4f8ef7;
+    --accent2: #f7654f;
+    --green: #3ddc84;
+    --yellow: #f7c84f;
+    --text: #e8ecf4;
+    --muted: #6b7391;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .panel-title {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen { max-width: 480px; margin: 60px auto; }
+  #setup-screen .logo {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  #setup-screen h2 {
+    font-size: 1.4rem; font-weight: 800;
+    text-align: center; margin-bottom: 4px;
+  }
+  #setup-screen p { text-align: center; color: var(--muted); font-size: .85rem; margin-bottom: 24px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: .75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .form-group input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .9rem;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 8px; border: none;
+    font-family: 'Syne', sans-serif; font-size: .85rem; font-weight: 700;
+    cursor: pointer; transition: all .15s; letter-spacing: .5px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a7af0; transform: translateY(-1px); }
+  .btn-danger  { background: var(--accent2); color: #fff; }
+  .btn-danger:hover { background: #e84f35; }
+  .btn-success { background: var(--green); color: #0d0f14; }
+  .btn-success:hover { background: #2fc96e; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-block { width: 100%; justify-content: center; }
+  .btn-sm { padding: 8px 14px; font-size: .78rem; }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen { max-width: 400px; margin: 60px auto; }
+
+  .role-tabs {
+    display: flex; gap: 8px; margin-bottom: 24px;
+  }
+  .role-tab {
+    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: .82rem;
+    cursor: pointer; transition: all .2s; text-align: center;
+  }
+  .role-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── MAIN APP ── */
+  #main-app { display: none; }
+
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .toolbar-right { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .badge {
+    display: inline-block; padding: 4px 10px; border-radius: 100px;
+    font-size: .7rem; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-teacher { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+  .badge-student { background: rgba(61,220,132,.15); color: var(--green); border: 1px solid rgba(61,220,132,.3); }
+  .badge-locked  { background: rgba(247,101,79,.15);  color: var(--accent2); border: 1px solid rgba(247,101,79,.3); }
+
+  .session-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .75rem; color: var(--muted);
+  }
+
+  /* ── CLASS SELECTOR (Student) ── */
+  .class-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .class-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: .8rem; font-weight: 700;
+    padding: 10px 6px;
+    cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .class-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .class-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .class-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── ATTENDANCE TABLE - Excel Style ── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  table {
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .72rem;
+    width: 100%;
+  }
+  thead th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    padding: 7px 3px; text-align: center;
+    border: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 2;
+    white-space: nowrap;
+    min-width: 38px;
+  }
+  tbody tr { transition: background .1s; }
+  tbody tr:nth-child(even) { background: rgba(30,34,48,.4); }
+  tbody tr:hover { background: rgba(79,142,247,.06); }
+  tbody td {
+    padding: 0;
+    text-align: center; vertical-align: middle;
+    border: 1px solid rgba(42,47,66,.6);
+    min-width: 38px; height: 28px;
+  }
+
+  /* ── CLICKABLE ID CELLS ── */
+  .id-cell {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .68rem; font-weight: 600;
+    cursor: pointer;
+    transition: all .12s;
+    color: var(--text);
+    user-select: none;
+    padding: 0 2px;
+  }
+  .id-cell:hover {
+    background: rgba(61,220,132,.2);
+    color: var(--green);
+  }
+  .id-cell.present {
+    background: rgba(61,220,132,.22);
+    color: var(--green);
+    font-weight: 700;
+  }
+  .id-cell.present:hover {
+    background: rgba(61,220,132,.35);
+  }
+  .id-cell.locked {
+    cursor: not-allowed;
+    color: var(--muted);
+    opacity: .5;
+  }
+  .id-cell.locked:hover {
+    background: transparent;
+    color: var(--muted);
+  }
+
+  /* total row */
+  .total-row td {
+    background: #1a1e29 !important;
+    font-weight: 700; color: var(--yellow);
+    font-size: .65rem; padding: 5px 3px;
+  }
+  .total-row td:first-child { color: var(--yellow); }
+  .freq-cell { color: var(--yellow); font-weight: 700; }
+  .freq-header { color: var(--yellow) !important; }
+
+  /* ── ID SELECTOR modal ── */
+  #id-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.75); z-index: 50;
+    align-items: center; justify-content: center;
+  }
+  #id-modal-overlay.open { display: flex; }
+  #id-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+    width: min(520px, 95vw); max-height: 80vh;
+    overflow-y: auto;
+  }
+  #id-modal h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 6px; }
+  #id-modal p  { color: var(--muted); font-size: .82rem; margin-bottom: 18px; }
+  .id-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px; margin-bottom: 18px;
+  }
+  .id-chip {
+    padding: 9px 6px; border-radius: 8px; text-align: center;
+    border: 1px solid var(--border); background: var(--surface2);
+    font-family: 'JetBrains Mono', monospace; font-size: .75rem; font-weight: 600;
+    cursor: pointer; color: var(--text); transition: all .15s;
+  }
+  .id-chip:hover { border-color: var(--green); color: var(--green); }
+  .id-chip.taken { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 20px;
+    font-size: .85rem; font-weight: 600;
+    z-index: 100; opacity: 0; transform: translateY(16px);
+    transition: all .3s; pointer-events: none;
+    max-width: 300px;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.error   { border-color: var(--accent2); color: var(--accent2); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* lock banner */
+  .lock-banner {
+    display: none;
+    background: rgba(247,101,79,.1); border: 1px solid rgba(247,101,79,.3);
+    border-radius: 8px; padding: 12px 16px;
+    color: var(--accent2); font-size: .82rem; font-weight: 700;
+    text-align: center; margin-bottom: 16px;
+  }
+  .lock-banner.show { display: block; }
+
+  select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: .82rem;
+    padding: 8px 12px; outline: none; cursor: pointer;
+  }
+
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .stat-label { font-size: .65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
+  .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+  .stat-val.green { color: var(--green); }
+  .stat-val.yellow { color: var(--yellow); }
+  .stat-val.blue { color: var(--accent); }
+
+  /* ── CLICKABLE COLUMN HEADERS (Student) ── */
+  .col-header-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+    width: 100%; padding: 3px 2px; border-radius: 4px;
+    cursor: pointer; transition: all .15s;
+    font-size: .62rem; white-space: nowrap;
+  }
+  .col-header-btn:hover {
+    background: rgba(79,142,247,.2);
+    color: var(--accent);
+  }
+  .col-header-btn.col-locked {
+    color: var(--accent2); cursor: not-allowed; opacity: .6;
+    font-size: .55rem;
+  }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 640px) {
+    body { padding: 10px 8px; }
+    .header h1 { font-size: 1.3rem; }
+    .header p { font-size: .72rem; }
+    .header { margin-bottom: 16px; }
+
+    .toolbar { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 14px; }
+    .toolbar-left { justify-content: space-between; }
+    .toolbar-right { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .toolbar-right .btn { justify-content: center; font-size: .72rem; padding: 9px 6px; }
+    #teacher-controls { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+    #teacher-controls select { grid-column: 1 / -1; width: 100%; }
+
+    .stats-bar { gap: 6px; }
+    .stat { padding: 7px 10px; flex: 1 1 calc(50% - 3px); }
+    .stat-val { font-size: .88rem; }
+
+    table { font-size: .62rem; }
+    thead th { padding: 5px 2px; font-size: .55rem; min-width: 32px; }
+    tbody td { min-width: 32px; height: 26px; }
+    .id-cell { font-size: .6rem; height: 26px; }
+
+    #toast { bottom: 12px; right: 8px; left: 8px; max-width: none; font-size: .78rem; }
+    #setup-screen { margin: 20px auto; }
+    #login-screen { margin: 20px auto; }
+    .panel { padding: 14px; }
+  }
+
+  @media (max-width: 380px) {
+    .toolbar-right { grid-template-columns: 1fr; }
+    .stat { flex: 1 1 100%; }
+    table { font-size: .55rem; }
+    thead th { min-width: 28px; padding: 4px 1px; }
+    tbody td { min-width: 28px; height: 24px; }
+    .id-cell { font-size: .55rem; height: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SETUP SCREEN  (first-time password setup)
+══════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="logo">🎓</div>
+  <h2>Attendance System</h2>
+  <p>First-time setup — set your passwords to begin.</p>
+
+  <div class="panel">
+    <div class="panel-title">Setup Passwords</div>
+
+    <div class="form-group">
+      <label>Teacher Password</label>
+      <input type="password" id="setup-teacher-pw" placeholder="Create teacher password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Student Password <span style="color:var(--muted);font-size:.72rem">(shared with all students)</span></label>
+      <input type="password" id="setup-student-pw" placeholder="Create student password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Confirm Student Password</label>
+      <input type="password" id="setup-student-pw2" placeholder="Re-enter student password" autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="doSetup()">Save Passwords & Continue →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════ -->
+<div id="login-screen" style="display:none">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:2.5rem">🎓</div>
+    <h2 style="font-size:1.4rem;font-weight:800;margin-top:6px">Class Attendance</h2>
+    <p style="color:var(--muted);font-size:.82rem;margin-top:4px">Select your role and enter password</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Login</div>
+    <div class="role-tabs">
+      <div class="role-tab active" id="tab-teacher" onclick="selectRole('teacher')">👩‍🏫 Teacher</div>
+      <div class="role-tab" id="tab-student" onclick="selectRole('student')">🎒 Student</div>
+    </div>
+    <div class="form-group">
+      <label id="pw-label">Teacher Password</label>
+      <input type="password" id="login-pw" placeholder="Enter password" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="doLogin()">Enter →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════ -->
+<div id="main-app">
+
+  <div class="header">
+    <h1>📋 Class Attendance</h1>
+    <p>25-Class Attendance Tracker</p>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span id="role-badge" class="badge badge-teacher">Teacher</span>
+      <span id="locked-badge" class="badge badge-locked" style="display:none">🔒 Locked</span>
+      <span class="session-info" id="session-label"></span>
+    </div>
+    <div class="toolbar-right">
+      <!-- Teacher-only controls -->
+      <div id="teacher-controls" style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="class-select" onchange="onClassChange()">
+          <!-- filled by JS -->
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="openMarkAll()">✔ Mark All</button>
+        <button id="lock-btn" class="btn btn-danger btn-sm" onclick="toggleLock()">🔒 Lock Column</button>
+      </div>
+      <!-- Student controls -->
+      <div id="student-controls" style="display:none">
+      </div>
+      <button class="btn btn-success btn-sm" onclick="downloadExcel()">⬇ Download Excel</button>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- LOCK BANNER -->
+  <div id="lock-banner" class="lock-banner">
+    🔒 This class column is locked. No more attendance can be marked.
+  </div>
+
+  <!-- STUDENT: class selector -->
+  <div id="student-class-panel" style="display:none" class="panel">
+    <div class="panel-title">Select Class Period</div>
+    <div class="class-grid" id="student-class-grid"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <!-- TABLE -->
+  <div class="panel" style="padding:0;overflow:hidden">
+    <div class="table-wrap">
+      <table id="att-table">
+        <thead id="att-thead"></thead>
+        <tbody id="att-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STUDENT HINT -->
+  <div id="student-hint" style="display:none;margin-top:14px;text-align:center;color:var(--muted);font-size:.78rem;letter-spacing:.3px;">
+    👆 Tap any <strong style="color:var(--accent)">C1 – C25</strong> column header to mark your attendance for that class
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     ID MODAL  (student picks their ID)
+══════════════════════════════════════ -->
+<div id="id-modal-overlay">
+  <div id="id-modal">
+    <h3>Select Your Student ID</h3>
+    <p>Choose your ID for <strong id="modal-class-label">Class 1</strong>. Each ID can only be selected once per class.</p>
+    <div class="id-grid" id="id-grid"></div>
+    <button class="btn btn-outline btn-block" onclick="closeIdModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════
+const NUM_CLASSES = 25;
+const STORAGE_KEY = 'att_system_v1';
+
+// 50 Student IDs — will be loaded from Excel or use defaults
+let STUDENT_IDS = [
+  "STU-001","STU-002","STU-003","STU-004","STU-005",
+  "STU-006","STU-007","STU-008","STU-009","STU-010",
+  "STU-011","STU-012","STU-013","STU-014","STU-015",
+  "STU-016","STU-017","STU-018","STU-019","STU-020",
+  "STU-021","STU-022","STU-023","STU-024","STU-025",
+  "STU-026","STU-027","STU-028","STU-029","STU-030",
+  "STU-031","STU-032","STU-033","STU-034","STU-035",
+  "STU-036","STU-037","STU-038","STU-039","STU-040",
+  "STU-041","STU-042","STU-043","STU-044","STU-045",
+  "STU-046","STU-047","STU-048","STU-049","STU-050"
+];
+
+// ══════════════════════════════════════════════════
+// STATE  (stored in sessionStorage — passwords NEVER stored in DOM)
+// ══════════════════════════════════════════════════
+let state = {
+  teacherPwHash: null,   // hashed
+  studentPwHash: null,   // hashed
+  attendance: {},        // { classIdx: { studentId: true|false } }
+  locked: {},            // { classIdx: true }
+  role: null,            // 'teacher' | 'student'
+  selectedClass: 0,      // 0-based
+  studentId: null,       // chosen student id (for student role)
+};
+
+function saveState() {
+  const toStore = {
+    teacherPwHash: state.teacherPwHash,
+    studentPwHash: state.studentPwHash,
+    attendance: state.attendance,
+    locked: state.locked,
+    ids: STUDENT_IDS,
+  };
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+}
+
+function loadState() {
+  const raw = sessionStorage.getItem(STORAGE_KEY);
+  if (!raw) return false;
+  const s = JSON.parse(raw);
+  state.teacherPwHash = s.teacherPwHash;
+  state.studentPwHash = s.studentPwHash;
+  state.attendance = s.attendance || {};
+  state.locked = s.locked || {};
+  if (s.ids && s.ids.length) STUDENT_IDS = s.ids;
+  return true;
+}
+
+// Simple hash (not crypto — passwords are purely session-scoped, never transmitted)
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return h.toString(36);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (loadState() && state.teacherPwHash) {
+    show('login-screen');
+  } else {
+    show('setup-screen');
+  }
+
+  // Populate teacher class select
+  const sel = document.getElementById('class-select');
+  for (let i = 0; i < NUM_CLASSES; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `Class ${i+1}`;
+    sel.appendChild(opt);
+  }
+});
+
+function show(id) {
+  ['setup-screen','login-screen','main-app'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? '' : 'none';
+  });
+  if (id === 'main-app') document.getElementById('main-app').style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════
+// SETUP
+// ══════════════════════════════════════════════════
+function doSetup() {
+  const tpw = document.getElementById('setup-teacher-pw').value.trim();
+  const spw = document.getElementById('setup-student-pw').value.trim();
+  const spw2 = document.getElementById('setup-student-pw2').value.trim();
+  if (!tpw || !spw) return toast('Please fill all fields', 'error');
+  if (spw !== spw2) return toast('Student passwords do not match', 'error');
+  if (tpw === spw) return toast('Teacher and student passwords must differ', 'error');
+
+  state.teacherPwHash = hashStr(tpw);
+  state.studentPwHash = hashStr(spw);
+  saveState();
+  toast('Passwords saved!', 'success');
+  setTimeout(() => show('login-screen'), 700);
+}
+
+// ══════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════
+let selectedRole = 'teacher';
+function selectRole(r) {
+  selectedRole = r;
+  document.getElementById('tab-teacher').classList.toggle('active', r==='teacher');
+  document.getElementById('tab-student').classList.toggle('active', r==='student');
+  document.getElementById('pw-label').textContent = r==='teacher' ? 'Teacher Password' : 'Student Password';
+}
+
+function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  if (!pw) return toast('Enter password', 'error');
+  const hash = hashStr(pw);
+
+  if (selectedRole === 'teacher') {
+    if (hash !== state.teacherPwHash) return toast('Wrong teacher password', 'error');
+    state.role = 'teacher';
+  } else {
+    if (hash !== state.studentPwHash) return toast('Wrong student password', 'error');
+    state.role = 'student';
+  }
+  document.getElementById('login-pw').value = '';
+  enterApp();
+}
+
+function doLogout() {
+  state.role = null;
+  state.studentId = null;
+  document.getElementById('login-pw').value = '';
+  show('login-screen');
+}
+
+// ══════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════
+function enterApp() {
+  show('main-app');
+  const isTeacher = state.role === 'teacher';
+
+  document.getElementById('role-badge').textContent = isTeacher ? '👩‍🏫 Teacher' : '🎒 Student';
+  document.getElementById('role-badge').className = 'badge ' + (isTeacher ? 'badge-teacher' : 'badge-student');
+  document.getElementById('teacher-controls').style.display = isTeacher ? 'flex' : 'none';
+  document.getElementById('student-controls').style.display = isTeacher ? 'none' : 'flex';
+  document.getElementById('student-class-panel').style.display = isTeacher ? 'none' : 'block';
+  document.getElementById('student-hint').style.display = isTeacher ? 'none' : 'block';
+
+  if (!isTeacher) buildStudentClassGrid();
+  buildTable();
+  updateStats();
+}
+
+// ── TABLE BUILD ──
+function buildTable() {
+  const isTeacher = state.role === 'teacher';
+  const classIdx  = parseInt(document.getElementById('class-select').value || 0);
+  state.selectedClass = classIdx;
+
+  // THEAD — only C1..C25 columns (no Student ID column, no FREQ)
+  const thead = document.getElementById('att-thead');
+  thead.innerHTML = '';
+  const tr = document.createElement('tr');
+
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const th = document.createElement('th');
+    const isLocked = !!state.locked[c];
+    if (!isTeacher) {
+      const span = document.createElement('span');
+      span.className = 'col-header-btn' + (isLocked ? ' col-locked' : '');
+      span.title = isLocked ? 'Locked by teacher' : `Mark attendance for C${c+1}`;
+      span.textContent = (isLocked ? '🔒' : '') + `C${c+1}`;
+      if (isLocked) th.style.color = 'var(--accent2)';
+      th.appendChild(span);
+    } else {
+      th.textContent = `C${c+1}`;
+      if (isLocked) th.style.color = 'var(--accent2)';
+    }
+    tr.appendChild(th);
+  }
+  thead.appendChild(tr);
+
+  // TBODY — each row is one student, each cell shows ID and is clickable
+  const tbody = document.getElementById('att-tbody');
+  tbody.innerHTML = '';
+
+  STUDENT_IDS.forEach(sid => {
+    const row = document.createElement('tr');
+
+    for (let c = 0; c < NUM_CLASSES; c++) {
+      const td = document.createElement('td');
+      const val = (state.attendance[c] || {})[sid];
+      const isLocked = !!state.locked[c];
+      const isPresent = val === true;
+
+      const cell = document.createElement('div');
+      cell.className = 'id-cell' + (isPresent ? ' present' : '') + (isLocked ? ' locked' : '');
+      cell.textContent = sid;
+      cell.title = isLocked
+        ? `${sid} — Locked`
+        : isPresent
+          ? `${sid} — Present ✓ (click to undo)`
+          : `${sid} — Click to mark present`;
+
+      if (!isLocked) {
+        cell.addEventListener('click', () => {
+          if (!state.attendance[c]) state.attendance[c] = {};
+          // Toggle: if already present, remove; if absent, mark present
+          if (state.attendance[c][sid] === true) {
+            delete state.attendance[c][sid];
+          } else {
+            state.attendance[c][sid] = true;
+          }
+          saveState();
+          buildTable();
+          updateStats();
+          const nowPresent = (state.attendance[c] || {})[sid] === true;
+          toast(nowPresent ? `✓ ${sid} — C${c+1} Present` : `${sid} — C${c+1} Removed`, nowPresent ? 'success' : 'error');
+        });
+      }
+
+      td.appendChild(cell);
+      row.appendChild(td);
+    }
+
+    tbody.appendChild(row);
+  });
+
+  // TOTAL ROW
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total-row';
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const td = document.createElement('td');
+    const classData = state.attendance[c] || {};
+    const count = Object.values(classData).filter(v => v === true).length;
+    td.textContent = count || '—';
+    totalRow.appendChild(td);
+  }
+  tbody.appendChild(totalRow);
+
+  // Update lock UI
+  updateLockUI(classIdx);
+}
+
+function onClassChange() {
+  const idx = parseInt(document.getElementById('class-select').value);
+  state.selectedClass = idx;
+  buildTable();
+  updateStats();
+}
+
+function updateLockUI(classIdx) {
+  const locked = state.locked[classIdx];
+  const lockBtn = document.getElementById('lock-btn');
+  const banner  = document.getElementById('lock-banner');
+  const badge   = document.getElementById('locked-badge');
+
+  lockBtn.textContent = locked ? '🔓 Unlock Column' : '🔒 Lock Column';
+  banner.classList.toggle('show', !!locked);
+  badge.style.display = locked ? '' : 'none';
+}
+
+// ── STATS ──
+function updateStats() {
+  const bar = document.getElementById('stats-bar');
+  bar.innerHTML = '';
+
+  // total present across all classes
+  let totalPresent = 0, totalPossible = 0;
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const d = state.attendance[c] || {};
+    totalPresent += Object.values(d).filter(v => v===true).length;
+    totalPossible += STUDENT_IDS.length;
+  }
+
+  const classIdx = state.selectedClass;
+  const classData = state.attendance[classIdx] || {};
+  const classPresent = Object.values(classData).filter(v=>v===true).length;
+  const lockedCount = Object.values(state.locked).filter(Boolean).length;
+
+  function statEl(label, val, color='') {
+    return `<div class="stat"><span class="stat-label">${label}</span><span class="stat-val ${color}">${val}</span></div>`;
+  }
+
+  bar.innerHTML =
+    statEl('Students', STUDENT_IDS.length, 'blue') +
+    statEl(`Class ${classIdx+1} Present`, classPresent, 'green') +
+    statEl('Total Present (All)', totalPresent, 'yellow') +
+    statEl('Classes Locked', lockedCount, '');
+}
+
+// ══════════════════════════════════════════════════
+// TEACHER ACTIONS
+// ══════════════════════════════════════════════════
+function toggleLock() {
+  const c = state.selectedClass;
+  state.locked[c] = !state.locked[c];
+  saveState();
+  buildTable();
+  updateStats();
+  toast(state.locked[c] ? `Class ${c+1} locked 🔒` : `Class ${c+1} unlocked 🔓`,
+        state.locked[c] ? 'error' : 'success');
+}
+
+function openMarkAll() {
+  const c = state.selectedClass;
+  if (state.locked[c]) return toast('Column is locked', 'error');
+  if (!state.attendance[c]) state.attendance[c] = {};
+  STUDENT_IDS.forEach(sid => state.attendance[c][sid] = true);
+  saveState();
+  buildTable();
+  updateStats();
+  toast(`All students marked present for Class ${c+1}`, 'success');
+}
+
+// ══════════════════════════════════════════════════
+// STUDENT ACTIONS
+// ══════════════════════════════════════════════════
+function buildStudentClassGrid() {
+  const grid = document.getElementById('student-class-grid');
+  grid.innerHTML = '';
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const btn = document.createElement('button');
+    btn.className = 'class-btn' + (c === state.selectedClass ? ' active' : '');
+    btn.textContent = `Class ${c+1}`;
+    if (state.locked[c]) {
+      btn.disabled = true;
+      btn.title = 'Locked by teacher';
+    }
+    btn.onclick = () => {
+      state.selectedClass = c;
+      document.querySelectorAll('.class-btn').forEach((b,i) => b.classList.toggle('active', i===c));
+      document.getElementById('class-select').value = c;
+      buildTable();
+      updateStats();
+    };
+    grid.appendChild(btn);
+  }
+}
+
+function openIdModal() {
+  const c = state.selectedClass;
+  if (state.locked[c]) return toast('This class is locked by the teacher', 'error');
+
+  document.getElementById('modal-class-label').textContent = `Class ${c+1}`;
+  const grid = document.getElementById('id-grid');
+  grid.innerHTML = '';
+
+  const classData = state.attendance[c] || {};
+  const taken = new Set(Object.keys(classData).filter(k => classData[k] === true));
+
+  STUDENT_IDS.forEach(sid => {
+    const chip = document.createElement('div');
+    chip.className = 'id-chip' + (taken.has(sid) ? ' taken' : '');
+    chip.textContent = sid;
+    if (!taken.has(sid)) {
+      chip.onclick = () => markAttendance(sid, c);
+    }
+    grid.appendChild(chip);
+  });
+
+  document.getElementById('id-modal-overlay').classList.add('open');
+}
+
+function closeIdModal() {
+  document.getElementById('id-modal-overlay').classList.remove('open');
+}
+
+function markAttendance(sid, classIdx) {
+  if (state.locked[classIdx]) { closeIdModal(); return toast('Column locked', 'error'); }
+  if (!state.attendance[classIdx]) state.attendance[classIdx] = {};
+  state.attendance[classIdx][sid] = true;
+  state.studentId = sid;
+  saveState();
+  closeIdModal();
+  buildTable();
+  buildStudentClassGrid();
+  updateStats();
+  toast(`✓ ${sid} marked present for Class ${classIdx+1}`, 'success');
+}
+
+// ══════════════════════════════════════════════════
+// DOWNLOAD EXCEL
+// ══════════════════════════════════════════════════
+function downloadExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Header row
+  const header = ['Student ID'];
+  for (let c = 0; c < NUM_CLASSES; c++) header.push(`Class ${c+1}`);
+  header.push('Frequency');
+
+  const rows = [header];
+
+  // Data rows
+  STUDENT_IDS.forEach(sid => {
+    const row = [sid];
+    let freq = 0;
+    for (let c = 0; c < NUM_CLASSES; c++) {
+      const val = (state.attendance[c] || {})[sid];
+      if (val === true)  { row.push('P'); freq++; }
+      else if (val === false) row.push('A');
+      else row.push('');
+    }
+    row.push(freq);
+    rows.push(row);
+  });
+
+  // Total row
+  const totRow = ['TOTAL'];
+  let grand = 0;
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const d = state.attendance[c] || {};
+    const cnt = Object.values(d).filter(v=>v===true).length;
+    totRow.push(cnt);
+    grand += cnt;
+  }
+  totRow.push(grand);
+  rows.push(totRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [{ wch: 14 }];
+  for (let c = 0; c < NUM_CLASSES; c++) ws['!cols'].push({ wch: 9 });
+  ws['!cols'].push({ wch: 10 });
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Attendance_${date}.xlsx`);
+  toast('Excel downloaded!', 'success');
+}
+
+// ══════════════════════════════════════════════════
+// EXCEL UPLOAD  (to load IDs from Excel)
+// ══════════════════════════════════════════════════
+function loadIdsFromExcel(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = new Uint8Array(e.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const ids = [];
+    rows.forEach(row => {
+      row.forEach(cell => {
+        const v = String(cell).trim();
+        if (v && !ids.includes(v)) ids.push(v);
+      });
+    });
+    if (ids.length < 1) return toast('No IDs found in Excel', 'error');
+    STUDENT_IDS = ids.slice(0, 100); // cap at 100
+    saveState();
+    buildTable();
+    updateStats();
+    toast(`Loaded ${STUDENT_IDS.length} IDs from Excel ✓`, 'success');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+</script>
+
+<!-- ID upload button (setup screen) -->
+<script>
+// Add upload button to setup screen after DOM loads
+window.addEventListener('DOMContentLoaded', () => {
+  const ss = document.getElementById('setup-screen');
+  const note = document.createElement('p');
+  note.style.cssText = 'text-align:center;color:var(--muted);font-size:.78rem;margin-top:16px';
+  note.innerHTML = '📂 Optionally, upload your Excel file to load student IDs:';
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xls';
+  inp.style.cssText = 'display:block;margin:10px auto;color:var(--muted);font-size:.8rem;cursor:pointer';
+  inp.onchange = e => { if(e.target.files[0]) loadIdsFromExcel(e.target.files[0]); };
+  ss.appendChild(note);
+  ss.appendChild(inp);
+});
+</script>
+
+</body>
+</html>
